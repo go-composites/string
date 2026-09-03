@@ -94,26 +94,31 @@ jobs:
           go-version: stable
       - run: go vet ./...
       - run: go build ./...
-      - name: Test with coverage
+      - name: Test (with coverage gate)
         shell: bash
         run: |
           set -euo pipefail
-          # Same per-package gate as `native`: the demo `main` package has no
-          # tests and no statements to exercise, and is excluded there too.
-          for pkg in $(go list ./...); do
-            if ! ls "$(go list -f '{{.Dir}}' "$pkg")"/*_test.go >/dev/null 2>&1; then
-              echo "${pkg}: no tests — skipping"
+          fail=0
+          while IFS= read -r pkg; do
+            # Skip packages that carry no test files (e.g. package main).
+            ntests="$(go list -f '{{len .TestGoFiles}}{{len .XTestGoFiles}}' "$pkg")"
+            if [ "$ntests" = "00" ]; then
+              echo "no test files for $pkg — skipping"
               continue
             fi
-            go test -cover -coverprofile=cover.out "$pkg"
-            total=$(go tool cover -func=cover.out \
-              | awk '/^total:/ {print substr($3, 1, length($3)-1)}')
-            echo "${pkg} coverage: ${total}%"
-            awk -v t="$total" -v m="$COVERAGE_MIN" \
-              'BEGIN { exit (t+0 >= m+0) ? 0 : 1 }' \
-              || { echo "coverage ${total}% < ${COVERAGE_MIN}%"; exit 1; }
-          done
-
+            out="$(go test -cover -covermode=atomic "$pkg" 2>&1)" || {
+              echo "$out"; fail=1; continue
+            }
+            echo "$out"
+            cov="$(grep -oE 'coverage: [0-9.]+%' <<<"$out" | grep -oE '[0-9.]+' | tail -n1)"
+            if [ -z "$cov" ]; then
+              echo "::error::no coverage figure for $pkg"; fail=1; continue
+            fi
+            if awk "BEGIN{exit !($cov < $COVERAGE_MIN)}"; then
+              echo "::error::$pkg coverage ${cov}% < ${COVERAGE_MIN}%"; fail=1
+            fi
+          done < <(go list ./...)
+          exit $fail
 
   emulated:
     name: emulated (${{ matrix.arch }})
