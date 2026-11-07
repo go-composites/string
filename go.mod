@@ -3,8 +3,8 @@ module github.com/go-composites/string
 go 1.27.1
 
 require (
-	github.com/go-composites/array v0.0.0-20261102010947-14d77d10cf70
-	github.com/go-composites/error v0.0.0-20261031224832-70f51e843a7d
+	github.com/go-composites/array v0.0.0-20261106015716-bb61a386550a
+	github.com/go-composites/error v0.0.0-20261104015158-766d8cb306ef
 	github.com/go-composites/null v0.0.0-20261031224807-35430d41335f
-	github.com/go-composites/result v0.0.0-20261102011533-cd3658257f2b
+	github.com/go-composites/result v0.0.0-20261106020326-f6bf56cd3d3f
 )
